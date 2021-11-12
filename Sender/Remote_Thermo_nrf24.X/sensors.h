@@ -14,7 +14,8 @@ extern "C" {
 
 float SENSORS_getAmbientTemp(void);
 float SENSORS_getPoolWaterTemp(void);
-
+void SENSORS_sleep(void);
+void SENSORS_wakeUp(void);
 
 #ifdef	__cplusplus
 }

@@ -46,5 +46,7 @@ void nRF24L01_clear_interrupts(nRF24L01 *rf);
 void nRF24L01_clear_transmit_interrupts(nRF24L01 *rf);
 void nRF24L01_clear_receive_interrupt(nRF24L01 *rf);
 void nrf24L01_print_registers(nRF24L01 *rf);
+void nRF24L01_sleep(nRF24L01 *rf);
+void nRF24L01_wakeUp(nRF24L01 *rf);
 
 #endif

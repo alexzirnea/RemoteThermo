@@ -25,6 +25,7 @@
           <itemPath>mcc_generated_files/include/twi0_master.h</itemPath>
           <itemPath>mcc_generated_files/include/spi0.h</itemPath>
           <itemPath>i2c.h</itemPath>
+          <itemPath>mcc_generated_files/include/rtc.h</itemPath>
         </logicalFolder>
         <logicalFolder name="utils" displayName="utils" projectFiles="true">
           <logicalFolder name="assembler" displayName="assembler" projectFiles="true">
@@ -66,6 +67,7 @@
           <itemPath>mcc_generated_files/src/pin_manager.c</itemPath>
           <itemPath>mcc_generated_files/src/twi0_master.c</itemPath>
           <itemPath>mcc_generated_files/src/spi0.c</itemPath>
+          <itemPath>mcc_generated_files/src/rtc.c</itemPath>
         </logicalFolder>
         <itemPath>mcc_generated_files/device_config.c</itemPath>
         <itemPath>mcc_generated_files/mcc.c</itemPath>
@@ -253,6 +255,8 @@
         <property key="memories.programmemory.ranges" value="0-5fff"/>
         <property key="memories.rww" value="true"/>
         <property key="poweroptions.powerenable" value="false"/>
+        <property key="programmerToGoFilePath"
+                  value="C:/Users/Alexandru Zirnea/Desktop/GIT/RemoteThermo/Sender/Remote_Thermo_nrf24.X/debug/default/Remote_Thermo_nrf24_ptg"/>
         <property key="programoptions.eraseb4program" value="true"/>
         <property key="programoptions.preservedataflash" value="false"/>
         <property key="programoptions.preservedataflash.ranges"

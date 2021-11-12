@@ -4,6 +4,7 @@
 #include <string.h>
 #include "nrf24l01.h"
 #include "nrf24l01-mnemonics.h"
+#include <util/delay.h>
 
 
 static void copy_address(uint8_t *source, uint8_t *destination);
@@ -66,13 +67,13 @@ void nRF24L01_begin(nRF24L01 *rf) {
 uint8_t nRF24L01_send_command(nRF24L01 *rf, uint8_t command, void *data,
     size_t length) {
     CS_NRF24_SetLow();
-    GRN_LED_SetLow();
+    
     rf->status = spi_transfer(command);
     for (unsigned int i = 0; i < length; i++)
         ((uint8_t*)data)[i] = spi_transfer(((uint8_t*)data)[i]);
 
     CS_NRF24_SetHigh();
-    GRN_LED_SetHigh();
+    
     return rf->status;
 }
 
@@ -200,6 +201,25 @@ int nRF24L01_transmit_success(nRF24L01 *rf) {
 
 void nRF24L01_flush_transmit_message(nRF24L01 *rf) {
     nRF24L01_send_command(rf, FLUSH_TX, NULL, 0);
+}
+
+/* Beware that those atroceous blob nrf24 modules won't wake-up from sleep*/
+void nRF24L01_sleep(nRF24L01 *rf)
+{
+    uint8_t config;
+    nRF24L01_read_register(rf, CONFIG, &config, 1);
+    config &= ~_BV(PWR_UP);
+    nRF24L01_write_register(rf, CONFIG, &config, 1);
+}
+
+void nRF24L01_wakeUp(nRF24L01 *rf)
+{
+    uint8_t config;
+    nRF24L01_read_register(rf, CONFIG, &config, 1);
+    config |= _BV(PWR_UP);
+    nRF24L01_write_register(rf, CONFIG, &config, 1);
+    /*Delay at least 1.5ms as per the datasheet*/
+    _delay_ms(2);
 }
 
 void nRF24L01_retry_transmit(nRF24L01 *rf) {

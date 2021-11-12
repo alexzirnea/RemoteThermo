@@ -46,6 +46,7 @@ void SYSTEM_Initialize(void)
     I2C0_Initialize();
     SPI0_Initialize();
     ADC0_Initialize();
+    RTC_Initialize();
     USART2_Initialize();
     CPUINT_Initialize();
 }
@@ -106,8 +107,8 @@ int8_t CLKCTRL_Initialize()
  */
 int8_t SLPCTRL_Initialize()
 {
-    //SMODE IDLE; SEN disabled; 
-    ccp_write_io((void*)&(SLPCTRL.CTRLA),0x00);
+    //SMODE PDOWN; SEN enabled; 
+    ccp_write_io((void*)&(SLPCTRL.CTRLA),0x05);
 
     return 0;
 }

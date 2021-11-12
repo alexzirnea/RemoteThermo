@@ -5,6 +5,8 @@
 
 #define MCP9809_ADDR				0x18 
 #define MCP9808_REG_TA				0x05
+#define MCP9808_REG_CONFIG          0x01
+#define MCP9808_CONFIG_PWR_BIT      8
 
 /* Some constants for steinhart-hart conversion */
 #define R1 10000.0F
@@ -62,4 +64,21 @@ float SENSORS_getPoolWaterTemp(void)
     logR2 = log(R2);
     
     return ((1.0 / (C1 + C2*logR2 + C3*logR2*logR2*logR2)) - 273.15);
+}
+
+/* Squeeze out some extra few hundred microamps :D */
+void SENSORS_sleep(void)
+{
+    uint16_t config;
+    config = i2c_read2ByteRegister(MCP9809_ADDR, MCP9808_REG_CONFIG);
+    config &= ~(1<<MCP9808_CONFIG_PWR_BIT);
+    i2c_write2ByteRegister(MCP9809_ADDR, MCP9808_REG_CONFIG, config);
+}
+
+void SENSORS_wakeUp(void)
+{
+    uint16_t config;
+    config = i2c_read2ByteRegister(MCP9809_ADDR, MCP9808_REG_CONFIG);
+    config |= (1<<MCP9808_CONFIG_PWR_BIT);
+    i2c_write2ByteRegister(MCP9809_ADDR, MCP9808_REG_CONFIG, config);
 }

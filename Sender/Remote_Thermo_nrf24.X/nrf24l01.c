@@ -27,19 +27,17 @@ void nRF24L01_begin(nRF24L01 *rf) {
     nRF24L01_send_command(rf, FLUSH_RX, NULL, 0);
     nRF24L01_send_command(rf, FLUSH_TX, NULL, 0);
     nRF24L01_clear_interrupts(rf);
-    
-    
-    
+
     uint8_t data;
     data = _BV(EN_CRC) | _BV(CRCO) | _BV(PWR_UP);
     nRF24L01_write_register(rf, CONFIG, &data, 1);
     
-    data = 0x64;
+    data = rf->channel;
     //Write rf channel
     nRF24L01_write_register(rf, RF_CH, &data, 1);
     
     data = 0x2;
-    //Write rf channel
+    //Write rf setup
     nRF24L01_write_register(rf, RF_SETUP, &data, 1);
     
     // enable Auto Acknowlegde on all pipes
@@ -48,10 +46,12 @@ void nRF24L01_begin(nRF24L01 *rf) {
     nRF24L01_write_register(rf, EN_AA, &data, 1);
 
     // enable Dynamic Payload on al pipes
-   /* data = _BV(DPL_P0) | _BV(DPL_P1) | _BV(DPL_P2)
+    // Beware that these won't work on nrf24 clones. 
+    // In fact, the module won't work at all.
+    /* data = _BV(DPL_P0) | _BV(DPL_P1) | _BV(DPL_P2)
          | _BV(DPL_P3) | _BV(DPL_P4) | _BV(DPL_P5);
     nRF24L01_write_register(rf, DYNPD, &data, 1);
-*/
+    */
     
     // enable Dynamic Payload (global)
     /*
@@ -74,6 +74,33 @@ uint8_t nRF24L01_send_command(nRF24L01 *rf, uint8_t command, void *data,
     CS_NRF24_SetHigh();
     GRN_LED_SetHigh();
     return rf->status;
+}
+
+void nrf24L01_print_registers(nRF24L01 *rf)
+{
+    uint8_t data;
+    
+    nRF24L01_read_register(rf, CONFIG, &data, 1);
+    printf("CONFIG: %x\n", data);
+    nRF24L01_read_register(rf, EN_AA, &data, 1);
+    printf("EN_AA: %x\n", data);
+    nRF24L01_read_register(rf, EN_RXADDR, &data, 1);
+    printf("EN_RXADDR: %x\n", data);
+    nRF24L01_read_register(rf, SETUP_AW, &data, 1);
+    printf("SETUP_AW: %x\n", data);
+    nRF24L01_read_register(rf, SETUP_RETR, &data, 1);
+    printf("SETUP_RETR: %x\n", data);
+    nRF24L01_read_register(rf, RF_CH, &data, 1);
+    printf("RF_CH: %x\n", data);
+    nRF24L01_read_register(rf, RF_SETUP, &data, 1);
+    printf("RF_SETUP: %x\n", data);
+    nRF24L01_read_register(rf, STATUS, &data, 1);
+    printf("STATUS: %x\n", data);
+    nRF24L01_read_register(rf, FIFO_STATUS, &data, 1);
+    printf("FIFO_STATUS: %x\n", data);
+    nRF24L01_read_register(rf, FEATURE, &data, 1);
+    printf("FEATURE: %x\n", data);
+
 }
 
 uint8_t nRF24L01_write_register(nRF24L01 *rf, uint8_t reg_address, void *data,

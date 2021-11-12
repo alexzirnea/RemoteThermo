@@ -18,12 +18,8 @@ typedef struct {
 } gpio_pin;
 
 typedef struct {
-    gpio_pin ss; // slave select
-    gpio_pin ce; // chip enabled
-    gpio_pin sck; // serial clock
-    gpio_pin mosi; // master out slave in
-    gpio_pin miso; // master in slave out
     uint8_t status;
+    uint8_t channel;  
 } nRF24L01;
 
 
@@ -49,5 +45,6 @@ void nRF24L01_retry_transmit(nRF24L01 *rf);
 void nRF24L01_clear_interrupts(nRF24L01 *rf);
 void nRF24L01_clear_transmit_interrupts(nRF24L01 *rf);
 void nRF24L01_clear_receive_interrupt(nRF24L01 *rf);
+void nrf24L01_print_registers(nRF24L01 *rf);
 
 #endif

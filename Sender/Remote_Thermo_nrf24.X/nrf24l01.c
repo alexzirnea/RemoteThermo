@@ -37,7 +37,8 @@ void nRF24L01_begin(nRF24L01 *rf) {
     //Write rf channel
     nRF24L01_write_register(rf, RF_CH, &data, 1);
     
-    data = 0x2;
+    // 0dBm, 250kbps 
+    data = 0x26;
     //Write rf setup
     nRF24L01_write_register(rf, RF_SETUP, &data, 1);
     

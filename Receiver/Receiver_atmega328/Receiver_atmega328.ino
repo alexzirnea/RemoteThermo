@@ -7,6 +7,8 @@ Serial.begin(115200);
 radio.begin();
 radio.openReadingPipe(0, address);   //Setting the address at which we will receive the data
 //radio.setPALevel(RF24_PA_MIN);       //You can set this as minimum or maximum depending on the distance between the transmitter and receiver.
+radio.setDataRate(RF24_250KBPS);
+
 radio.setChannel(100);
 radio.printDetails();
 radio.startListening();              //This sets the module as receiver

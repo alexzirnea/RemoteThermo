@@ -1,6 +1,15 @@
 #include <nRF24L01.h>
 #include <RF24.h>
-RF24 radio(D4, D8); // CE, CSN
+
+#define NRF_CE 30 //PF4
+#define NRF_CSN 31 //PF5
+#define NRF_IRQ 32 //PF6
+
+//#define NRF_CE D4
+//#define NRF_CSN D8
+
+RF24 radio(NRF_CE, NRF_CSN, 1000000); // CE, CSN
+
 const byte address[5] = { 0x01, 0x01, 0x01, 0x01, 0x01 };
 void setup() {
 Serial.begin(115200);
@@ -19,6 +28,7 @@ Serial.println("Listening...");
 void loop()
 {
   float x;
+delay(500);
 if (radio.available())              //Looking for the data.
 {
   

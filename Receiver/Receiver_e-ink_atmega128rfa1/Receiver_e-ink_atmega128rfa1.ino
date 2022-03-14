@@ -7,9 +7,10 @@
 /* NRF24L01 Includes */
 #include <nRF24L01.h>
 #include <RF24.h>
+#include "printf.h"
 
 #define Imagesize (((EPD_2IN13D_WIDTH % 8 == 0) ? (EPD_2IN13D_WIDTH / 8) : (EPD_2IN13D_WIDTH / 8 + 1)) * EPD_2IN13D_HEIGHT)
-
+#define STALE_DATA_TIMEOUT 30000
 /* E-ink pins */
 #define CS_1 4
 #define CS_2 7
@@ -17,16 +18,171 @@
 #define BUSY_2 2
 
 /* NRF24L01 pins */
-#define NRF_CE PF4
-#define NRF_CSN PF5
-#define NRF_IRQ PF6
+#define NRF_CE 30 //PF4
+#define NRF_CSN 31 //PF5
+#define NRF_IRQ 32 //PF6
 
-RF24 radio(NRF_CE, NRF_CSN); // CE, CSN
+#define MAX_READINGS_NUMBER 8
+
+RF24 radio(NRF_CE, NRF_CSN, 1000000); // CE, CSN
 const byte address[5] = {0x01, 0x01, 0x01, 0x01, 0x01};
+uint32_t last_recv_millis;
+
 
 UBYTE BlackImage[Imagesize];
 char disp_buffer[10];
-int8_t temp1 = -1, temp2 = -20;
+uint8_t readings = 0;
+double ambientTempSum = 0, poolTempSum = 0;
+
+void setup()
+{
+
+  Serial.begin(115200);
+  printf_begin();
+  Serial.println("test");
+  radio.begin();
+  radio.openReadingPipe(0, address); //Setting the address at which we will receive the data
+  radio.setDataRate(RF24_250KBPS);
+
+  radio.setChannel(100);
+  radio.startListening(); //This sets the module as receiver
+
+  pinMode(CS_1, OUTPUT);
+  pinMode(CS_2, OUTPUT);
+  //pinMode(BUSY_1, OUTPUT);
+  //pinMode(BUSY_2, OUTPUT);
+
+  digitalWrite(CS_1, LOW);
+  digitalWrite(CS_2, LOW);
+  DEV_Module_Init();
+  digitalWrite(CS_1, HIGH);
+  digitalWrite(CS_2, HIGH);
+
+  digitalWrite(CS_1, LOW);
+  digitalWrite(CS_2, LOW);
+  EPD_2IN13D_Init();
+  digitalWrite(CS_1, HIGH);
+  digitalWrite(CS_2, HIGH);
+
+  digitalWrite(CS_1, LOW);
+  digitalWrite(CS_2, LOW);
+  EPD_2IN13D_Clear();
+  digitalWrite(CS_1, HIGH);
+  digitalWrite(CS_2, HIGH);
+
+  Paint_NewImage(BlackImage, EPD_2IN13D_WIDTH, EPD_2IN13D_HEIGHT, 270, WHITE);
+  Paint_SelectImage(BlackImage);
+
+  Paint_DrawString_EN(5, 5, "Initializing RF...", &Font16, BLACK, WHITE);
+  digitalWrite(CS_1, LOW);
+  digitalWrite(CS_2, LOW);
+  EPD_2IN13D_Display(BlackImage);
+  digitalWrite(CS_1, HIGH);
+  digitalWrite(CS_2, HIGH);
+
+  if (1)
+  {
+    Paint_DrawString_EN(5, 20, "RF Initialized!", &Font16, BLACK, WHITE);
+  }
+  else
+  {
+    Paint_DrawString_EN(5, 20, "RF init fail!", &Font16, BLACK, WHITE);
+  }
+
+  if (radio.isChipConnected())
+  {
+    Paint_DrawString_EN(5, 35, "nRF24 Connected", &Font16, BLACK, WHITE);
+  }
+  else
+  {
+    Paint_DrawString_EN(5, 35, "nRF24 Not available!", &Font16, BLACK, WHITE);
+  }
+  Paint_DrawString_EN(5, 50, "Waiting for data..", &Font16, BLACK, WHITE);
+  digitalWrite(CS_1, LOW);
+  digitalWrite(CS_2, LOW);
+  EPD_2IN13D_Display(BlackImage);
+  digitalWrite(CS_1, HIGH);
+  digitalWrite(CS_2, HIGH);
+
+  radio.printDetails();
+
+  last_recv_millis = millis();
+}
+
+void loop()
+{
+  bool validData = false;
+  char payload[32]; //Saving the incoming data
+  float poolTemp, ambientTemp;
+
+  if (radio.available()) //Looking for the data.
+  {
+    radio.read(payload, 32); //Reading the data
+    poolTemp = byteArrayToFloat((uint8_t *)payload);
+    ambientTemp = byteArrayToFloat((uint8_t *)(payload + 4));
+    validData = true;
+    last_recv_millis = millis();
+  }
+
+  if (validData)
+  {
+    poolTempSum += poolTemp;
+    ambientTempSum += ambientTemp;
+    readings++;
+  }
+
+  if (readings >= MAX_READINGS_NUMBER)
+  {
+    Paint_Clear(WHITE);
+    Paint_DrawString_EN(5, 5, "POOL TEMP:", &Font16, BLACK, WHITE);
+    tempFloatToChar((float)(poolTempSum / MAX_READINGS_NUMBER), disp_buffer);
+    Serial.println(disp_buffer);
+    Paint_DrawString_EN(20, 24, disp_buffer, &Font24, BLACK, WHITE);
+    Paint_DrawString_EN(5, 60, "OUTSIDE TEMP:", &Font16, BLACK, WHITE);
+    tempFloatToChar((float)(ambientTempSum / MAX_READINGS_NUMBER), disp_buffer);
+    Paint_DrawString_EN(20, 79, disp_buffer, &Font24, BLACK, WHITE);
+    digitalWrite(CS_1, LOW);
+    digitalWrite(CS_2, LOW);
+    EPD_2IN13D_Display(BlackImage);
+    digitalWrite(CS_1, HIGH);
+    digitalWrite(CS_2, HIGH);
+    DEV_Delay_ms(2000);
+    readings = 0;
+    poolTempSum = 0;
+    ambientTempSum = 0;
+  }
+
+  if ((millis() - last_recv_millis) >= STALE_DATA_TIMEOUT)
+  {
+    Paint_DrawString_EN(150, 80, "STALE", &Font16, BLACK, WHITE);
+    digitalWrite(CS_1, LOW);
+    digitalWrite(CS_2, LOW);
+    EPD_2IN13D_Display(BlackImage);
+    digitalWrite(CS_1, HIGH);
+    digitalWrite(CS_2, HIGH);
+    last_recv_millis = millis();
+  }
+}
+
+void tempFloatToChar(float temp, char* buf_p)
+{
+  if (temp >= 10.00)
+  {
+    dtostrf(temp, 5, 2, buf_p);
+  }
+  else if (temp >= 0.00)
+  {
+    dtostrf(temp, 4, 2, buf_p);
+  }
+  else if (temp > -10.00)
+  {
+    dtostrf(temp, 5, 2, buf_p);
+  }
+  else
+  {
+    dtostrf(temp, 6, 2, buf_p);
+  }
+}
 
 float byteArrayToFloat(uint8_t *temp_p)
 {
@@ -37,92 +193,4 @@ float byteArrayToFloat(uint8_t *temp_p)
     *(((uint8_t *)&x) + i) = temp_p[i];
   }
   return x;
-}
-
-void setup()
-{
-
-  pinMode(CS_1, OUTPUT);
-  pinMode(CS_2, OUTPUT);
-  pinMode(BUSY_1, OUTPUT);
-  pinMode(BUSY_2, OUTPUT);
-
-  pinMode(NRF_CE, OUTPUT);
-  pinMode(NRF_CSN, OUTPUT);
-
-  //printf("EPD_2IN13D_test Demo\r\n");
-
-  radio.openReadingPipe(0, address); //Setting the address at which we will receive the data
-  //radio.setPALevel(RF24_PA_MIN);       //You can set this as minimum or maximum depending on the distance between the transmitter and receiver.
-  radio.setDataRate(RF24_250KBPS);
-
-  radio.setChannel(100);
-  radio.printDetails();
-  radio.startListening(); //This sets the module as receiver
-
-  digitalWrite(CS_1, LOW);
-  digitalWrite(CS_2, HIGH);
-  DEV_Module_Init();
-
-  digitalWrite(CS_1, HIGH);
-  digitalWrite(CS_2, LOW);
-  DEV_Module_Init();
-
-  //printf("e-Paper Init and Clear...\r\n");
-  EPD_2IN13D_Init();
-  EPD_2IN13D_Clear();
-  DEV_Delay_ms(500);
-
-  Paint_NewImage(BlackImage, EPD_2IN13D_WIDTH, EPD_2IN13D_HEIGHT, 270, WHITE);
-  Paint_SelectImage(BlackImage);
-}
-
-void loop()
-{
-  bool validData = false;
-  char payload[32]; //Saving the incoming data
-  float poolTemp, ambientTemp;
-    
-  if (radio.available()) //Looking for the data.
-  {
-    radio.read(&payload, 32); //Reading the data
-    poolTemp = byteArrayToFloat((uint8_t *)payload);
-    ambientTemp = byteArrayToFloat((uint8_t *)(payload + 4));
-    validData = true;
-    /*
-    Serial.print("Pool Temp: ");
-    Serial.print(poolTemp);
-    Serial.println("C");
-    Serial.print("Ambient Temp: ");
-    Serial.print(ambientTemp);
-    Serial.println("C");
-    */
-  }
-  if (validData)
-  {
-    digitalWrite(CS_1, LOW);
-    digitalWrite(CS_2, HIGH);
-    DEV_Delay_ms(2000);
-    Paint_DrawString_EN(5, 5, "POOL TEMP:", &Font16, BLACK, WHITE);
-    itoa(poolTemp, disp_buffer, 10);
-    Paint_DrawString_EN(20, 24, disp_buffer, &Font24, BLACK, WHITE);
-    Paint_DrawString_EN(5, 60, "OUTSIDE TEMP:", &Font16, BLACK, WHITE);
-    itoa(ambientTemp, disp_buffer, 10);
-    Paint_DrawString_EN(20, 79, disp_buffer, &Font24, BLACK, WHITE);
-    EPD_2IN13D_Display(BlackImage);
-
-    digitalWrite(CS_1, HIGH);
-    digitalWrite(CS_2, LOW);
-    DEV_Delay_ms(2000);
-    Paint_Clear(WHITE);
-    Paint_DrawString_EN(5, 5, "POOL TEMP:", &Font16, BLACK, WHITE);
-    itoa(poolTemp, disp_buffer, 10);
-    Paint_DrawString_EN(20, 24, disp_buffer, &Font24, BLACK, WHITE);
-    Paint_DrawString_EN(5, 60, "OUTSIDE TEMP:", &Font16, BLACK, WHITE);
-    itoa(ambientTemp, disp_buffer, 10);
-    Paint_DrawString_EN(20, 79, disp_buffer, &Font24, BLACK, WHITE);
-    EPD_2IN13D_Display(BlackImage);
-    temp1++;
-    temp2++;
-  }
 }
